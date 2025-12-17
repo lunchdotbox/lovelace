@@ -30,5 +30,6 @@ VkQueue queueTypeToQueue(Device device, QueueType type);
 VkFormat findSupportedFormat(Device device, VkFormat* candidates, u32 n_candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 u32 findMemoryType(Device device, u32 filter, VkMemoryPropertyFlags properties);
 VkDeviceMemory allocateDeviceMemory(Device device, VkMemoryPropertyFlags properties, VkMemoryRequirements requirements);
+void* mapDeviceMemory(Device device, VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize range);
 
 #endif

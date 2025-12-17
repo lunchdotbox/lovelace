@@ -4,6 +4,8 @@
 #include "descriptor.h"
 #include "command.h"
 #include "synchronization.h"
+#include <elc/core.h>
+#include <vulkan/vulkan_core.h>
 
 DeviceLoop createDeviceLoop(Device device, QueueType type) {
     DeviceLoop loop = {0};
@@ -31,14 +33,18 @@ VkDescriptorSet getLoopSet(DeviceLoop loop) {
 
 void propogateDescriptorWrites(Device device, DeviceLoop* loop) {
     if (loop->written) {
-        VkCopyDescriptorSet copy = {
-            .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
-            .srcSet = getLoopSet(*loop),
-            .dstSet = loop->descriptor_sets[(loop->frame + 1) % FRAMES_IN_FLIGHT],
-            .descriptorCount = 10000,
-        };
+        VkCopyDescriptorSet copies[2];
+        for (u32 i = 0; i < ARRAY_LENGTH(copies); i++) // TODO: make a seperate written flag for each binding
+            copies[i] = (VkCopyDescriptorSet){
+                .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+                .srcSet = getLoopSet(*loop),
+                .dstSet = loop->descriptor_sets[(loop->frame + 1) % FRAMES_IN_FLIGHT],
+                .descriptorCount = 10000,
+                .srcBinding = i,
+                .dstBinding = i,
+            };
 
-        vkUpdateDescriptorSets(device.logical, 0, NULL, 1, &copy);
+        vkUpdateDescriptorSets(device.logical, 0, NULL, ARRAY_LENGTH(copies), copies);
     }
     loop->written = false;
 }

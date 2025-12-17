@@ -10,7 +10,7 @@ typedef struct DeviceLoop {
     VkCommandBuffer commands[FRAMES_IN_FLIGHT];
     VkSemaphore semaphores[FRAMES_IN_FLIGHT];
     VkFence fences[FRAMES_IN_FLIGHT];
-    u32 frame, set_index;
+    u32 frame, set_indices[2]; // TODO: make thise more clean maybe
     bool written;
 } DeviceLoop;
 

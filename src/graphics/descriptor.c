@@ -3,6 +3,7 @@
 #include "device.h"
 #include "device_loop.h"
 #include "texture.h"
+#include <vulkan/vulkan_core.h>
 
 VkDescriptorPool createDescriptorPool(Device device, u32 set_count, u32 descriptor_count) {
     VkDescriptorPoolCreateInfo info = {
@@ -10,9 +11,10 @@ VkDescriptorPool createDescriptorPool(Device device, u32 set_count, u32 descript
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .pPoolSizes = (VkDescriptorPoolSize[]){
             {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = set_count * descriptor_count},
+            {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = set_count * descriptor_count},
             {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = set_count * descriptor_count},
         },
-        .poolSizeCount = 2,
+        .poolSizeCount = 3,
         .maxSets = set_count,
     };
 
@@ -25,9 +27,11 @@ VkDescriptorPool createDescriptorPool(Device device, u32 set_count, u32 descript
 VkDescriptorSetLayout createSetLayout(Device device, u32 descriptor_count) {
     VkDescriptorSetLayoutBinding bindings[] = {
         (VkDescriptorSetLayoutBinding){.binding = 0, .descriptorCount = descriptor_count, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT},
+        (VkDescriptorSetLayoutBinding){.binding = 1, .descriptorCount = descriptor_count, .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT},
     };
 
     VkDescriptorBindingFlags flags[] = {
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
     };
 
@@ -84,8 +88,8 @@ void setDescriptorImage(Device device, DeviceLoop* loop, u32 index, VkDescriptor
 }
 
 u32 addDescriptorImage(Device device, DeviceLoop* loop, VkDescriptorImageInfo image) {
-    setDescriptorImage(device, loop, loop->set_index, image);
-    return loop->set_index++;
+    setDescriptorImage(device, loop, loop->set_indices[0], image);
+    return loop->set_indices[0]++;
 }
 
 u32 addDescriptorTexture(Device device, DeviceLoop* loop, u32 sampler, Texture texture) {
@@ -96,4 +100,24 @@ u32 addDescriptorTexture(Device device, DeviceLoop* loop, u32 sampler, Texture t
     };
 
     return addDescriptorImage(device, loop, info);
+}
+
+void setDescriptorStorageBuffer(Device device, DeviceLoop* loop, u32 index, VkDescriptorBufferInfo buffer) {
+    VkWriteDescriptorSet write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pBufferInfo = &buffer,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .dstArrayElement = index,
+        .dstSet = loop->descriptor_sets[loop->frame],
+        .dstBinding = 1,
+    };
+
+    vkUpdateDescriptorSets(device.logical, 1, &write, 0, NULL);
+    loop->written = true;
+}
+
+u32 addDescriptorStorageBuffer(Device device, DeviceLoop* loop, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range) {
+    setDescriptorStorageBuffer(device, loop, loop->set_indices[1], (VkDescriptorBufferInfo){.buffer = buffer, .offset = offset, .range = range});
+    return loop->set_indices[1]++;
 }

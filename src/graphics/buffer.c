@@ -1,6 +1,8 @@
 #include "buffer.h"
 
 #include "command.h"
+#include "device.h"
+#include <vulkan/vulkan_core.h>
 
 VkBuffer createBuffer(Device device, VkDeviceSize size, VkBufferUsageFlags usage, bool concurrent) {
     VkBufferCreateInfo create_info = {
@@ -32,4 +34,30 @@ void copyBuffer(Device device, QueueType type, VkBuffer src_buffer, VkBuffer dst
     commandCopyBuffer(command, src_buffer, dst_buffer, copy_size);
 
     endSingleTimeCommands(device, type, command);
+}
+
+ValidBuffer createValidBuffer(Device device, VkDeviceSize size, VkBufferUsageFlags usage, bool concurrent, VkMemoryPropertyFlags properties) {
+    ValidBuffer buffer;
+    buffer.buffer = createBuffer(device, size, usage, concurrent);
+    buffer.memory = createBufferMemory(device, buffer.buffer, properties);
+    return buffer;
+}
+
+void destroyValidBuffer(Device device, ValidBuffer buffer) {
+    vkFreeMemory(device.logical, buffer.memory, NULL);
+    vkDestroyBuffer(device.logical, buffer.buffer, NULL);
+}
+
+void makePermanentBuffers(Device device, QueueType type, u32 n_buffers, ValidBuffer* buffers, u64* sizes, VkBufferUsageFlags* usages, bool* concurrents) {
+    for (u32 i = 0; i < n_buffers; i++) vkUnmapMemory(device.logical, buffers[i].memory);
+
+    ValidBuffer new_buffers[n_buffers];
+    for (u32 i = 0; i < n_buffers; i++) new_buffers[i] = createValidBuffer(device, sizes[i], usages[i], concurrents[i], VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkCommandBuffer command = beginSingleTimeCommands(device, type);
+    for (u32 i = 0; i < n_buffers; i++) commandCopyBuffer(command, buffers[i].buffer, new_buffers[i].buffer, sizes[i]);
+    endSingleTimeCommands(device, type, command);
+
+    for (u32 i = 0; i < n_buffers; i++) destroyValidBuffer(device, buffers[i]);
+    for (u32 i = 0; i < n_buffers; i++) buffers[i] = new_buffers[i];
 }

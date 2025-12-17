@@ -5,6 +5,7 @@ layout(binding = 0) uniform sampler2D textures[];
 
 layout(push_constant) uniform Push {
     uint texture_id;
+    uint transform_buffer_id;
 } push;
 
 layout(location = 0) in vec2 in_uv;

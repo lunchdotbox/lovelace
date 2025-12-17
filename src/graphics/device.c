@@ -166,7 +166,7 @@ Device createDevice(VkInstance instance) {
     Device device;
     pickPhysicalDevice(instance, NULL, &device);
     createLogicalDevice(instance, &device);
-    device.descriptor_pool = createDescriptorPool(device, 4, 20000);
+    device.descriptor_pool = createDescriptorPool(device, 4, 100000);
     device.set_layout = createSetLayout(device, 10000);
     device.pipeline_layout = createPipelineLayout(device, 128, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     device.graphics_pool = createCommandPool(device, device.graphics_family);
@@ -226,4 +226,10 @@ VkDeviceMemory allocateDeviceMemory(Device device, VkMemoryPropertyFlags propert
     vkAllocateMemory(device.logical, &allocate_info, NULL, &memory);
 
     return memory;
+}
+
+void* mapDeviceMemory(Device device, VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize range) {
+    void* mapped;
+    vkMapMemory(device.logical, memory, offset, range, 0, &mapped);
+    return mapped;
 }
