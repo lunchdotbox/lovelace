@@ -2,6 +2,10 @@
 
 #include "buffer.h"
 #include "command.h"
+#include "graphics_pipeline.h"
+#include "window.h"
+
+static const PipelineConfig model_pipeline_config = MODEL_PIPELINE_CONFIG;
 
 Model createModel(Device device, u32 vertex_size, u32 vertex_count, u32 index_count, void** vertex_mapped, void** index_mapped) {
     Model model;
@@ -49,4 +53,10 @@ void finishModelUpload(Device device, Model* model, u32 vertex_size) {
     model->index_memory = index_memory;
     model->vertex_buffer = vertex_buffer;
     model->vertex_memory = vertex_memory;
+}
+
+PipelineConfig windowPipelineConfig(Window window) {
+    PipelineConfig config = model_pipeline_config;
+    setPipelineWindow(&config, window);
+    return config;
 }

@@ -1,6 +1,7 @@
 #include "command.h"
 
 #include "device.h"
+#include <vulkan/vulkan_core.h>
 
 VkCommandPool createCommandPool(Device device, u32 queue_family) {
     VkCommandPoolCreateInfo info = {
