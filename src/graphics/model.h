@@ -40,5 +40,6 @@ Model createModel(Device device, u32 vertex_size, u32 vertex_count, u32 index_co
 void destroyModel(Device device, Model model);
 void finishModelUpload(Device device, Model* model, u32 vertex_size);
 PipelineConfig windowPipelineConfig(Window window);
+void drawModel(VkCommandBuffer command, Model model);
 
 #endif

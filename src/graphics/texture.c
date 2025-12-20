@@ -123,6 +123,7 @@ void uploadImageData(Device device, QueueType type, VkExtent3D extent, void* dat
 
 Texture loadTexture(Device device, DeviceLoop* loop, QueueType type, const char* path) {
     int width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
     stbi_uc* pixels = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
 
     Texture texture = createTexture(device, (VkExtent2D){.width = width, .height = height});

@@ -108,3 +108,7 @@ void imageMemoryBarrier(VkCommandBuffer command, VkImageLayout old, VkImageLayou
 
     vkCmdPipelineBarrier(command, src_stage, dst_stage, 0, 0, NULL, 0, NULL, 1, &barrier);
 }
+
+void commandPushConstants(VkCommandBuffer command, Device device, VkShaderStageFlagBits stage, u32 size, const void* values) {
+    vkCmdPushConstants(command, device.pipeline_layout, stage, 0, size, values);
+}

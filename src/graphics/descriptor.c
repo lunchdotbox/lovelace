@@ -92,7 +92,7 @@ u32 addDescriptorImage(Device device, DeviceLoop* loop, VkDescriptorImageInfo im
     return loop->set_indices[0]++;
 }
 
-u32 addDescriptorTexture(Device device, DeviceLoop* loop, u32 sampler, Texture texture) {
+u32 addDescriptorTexture(Device device, DeviceLoop* loop, Sampler sampler, Texture texture) {
     VkDescriptorImageInfo info = {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .imageView = texture.color_view,

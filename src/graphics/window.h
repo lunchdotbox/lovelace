@@ -26,5 +26,7 @@ void submitAndPresent(Device device, Window* window, VkCommandBuffer command, u3
 VkCommandBuffer currentCommand(Window window);
 u32 beginWindowFrame(Window* window, Device device);
 void endWindowFrame(Window* window, Device device, u32 image);
+float windowAspect(Window window);
+void beginWindowPass(Window window, u32 image, vec4 clear);
 
 #endif

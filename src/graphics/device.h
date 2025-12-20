@@ -23,6 +23,11 @@ typedef enum QueueType {
     QUEUE_TYPE_COMPUTE,
 } QueueType;
 
+typedef enum Sampler {
+    SAMPLER_NEAREST,
+    SAMPLER_LINEAR,
+} Sampler;
+
 Device createDevice(VkInstance instance);
 void destroyDevice(Device device, VkInstance instance);
 VkCommandPool queueTypeToPool(Device device, QueueType type);

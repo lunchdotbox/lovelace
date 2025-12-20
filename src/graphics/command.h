@@ -12,5 +12,6 @@ void endSingleTimeCommands(Device device, QueueType type, VkCommandBuffer comman
 void commandCopyBuffer(VkCommandBuffer command_buffer, VkBuffer src_buffer, VkBuffer dst_buffer, u64 copy_size);
 void commandCopyBufferToImage(VkCommandBuffer command, VkExtent3D extent, VkBuffer buffer, VkImage image);
 void imageMemoryBarrier(VkCommandBuffer command, VkImageLayout old, VkImageLayout new, VkAccessFlags src_mask, VkAccessFlags dst_mask, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, u32 layers, VkImage image);
+void commandPushConstants(VkCommandBuffer command, Device device, VkShaderStageFlagBits stage, u32 size, const void* values);
 
 #endif

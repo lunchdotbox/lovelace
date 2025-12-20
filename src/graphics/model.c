@@ -4,6 +4,8 @@
 #include "command.h"
 #include "graphics_pipeline.h"
 #include "window.h"
+#include <cglm/io.h>
+#include <vulkan/vulkan_core.h>
 
 static const PipelineConfig model_pipeline_config = MODEL_PIPELINE_CONFIG;
 
@@ -59,4 +61,10 @@ PipelineConfig windowPipelineConfig(Window window) {
     PipelineConfig config = model_pipeline_config;
     setPipelineWindow(&config, window);
     return config;
+}
+
+void drawModel(VkCommandBuffer command, Model model) {
+    vkCmdBindVertexBuffers(command, 0, 1, &model.vertex_buffer, (VkDeviceSize[]){0});
+    vkCmdBindIndexBuffer(command, model.index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(command, model.index_count, 1, 0, 0, 0);
 }

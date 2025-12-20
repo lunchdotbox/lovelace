@@ -5,6 +5,7 @@
 #include "texture.h"
 #include "synchronization.h"
 #include "command.h"
+#include <math.h>
 
 ELC_INLINE void createSwapchain(Device device, VkExtent2D extent, Window* window) {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -186,4 +187,12 @@ void endWindowFrame(Window* window, Device device, u32 image) {
     vkCmdEndRenderPass(command);
     vkEndCommandBuffer(command);
     submitAndPresent(device, window, command, image);
+}
+
+float windowAspect(Window window) {
+    return (float)window.extent.width / (float)window.extent.height;
+}
+
+void beginWindowPass(Window window, u32 image, vec4 clear) {
+    beginRenderPass(window.render_pass, window.framebuffers[image], window.extent, currentCommand(window), &(VkClearColorValue)VEC4_USE(clear), 1.0f);
 }
