@@ -36,7 +36,7 @@ int main() {
     Camera camera = createCamera();
     glfwSetInputMode(window.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    HostMesh mesh = loadWavefront("models/piston_head.obj");
+    HostMesh mesh = loadWavefront("models/piston_rod.obj");
     mat3 inertia;
     vec3 com;
     float mass;
