@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 #include <cglm/affine-pre.h>
 #include <cglm/affine2d.h>
+#include <cglm/io.h>
 #include <cglm/mat4.h>
 #include <cglm/types.h>
 #include <elc/core.h>
@@ -19,6 +20,7 @@
 #include "graphics/model.h"
 #include "graphics/texture.h"
 #include "graphics/camera.h"
+#include "graphics/text.h"
 
 int main() {
     glfwInit();
@@ -26,8 +28,8 @@ int main() {
     Device device = createDevice(instance);
     Window window = createWindow(device, instance, 800, 600, "vulkan renderer");
 
-    // TextRenderer text_renderer = createTextRenderer(device, windowPipelineConfig(window));
-    // TextFont text_font = createTextFont(device, &window.device_loop, ELC_KILOBYTE, "images/fonts/minogram_6x10.png");
+    TextRenderer text_renderer = createTextRenderer(device, windowPipelineConfig(window));
+    TextFont text_font = createTextFont(device, &window.device_loop, ELC_KILOBYTE, "images/fonts/minogram_6x10.png");
 
     PipelineConfig pipeline_config = windowPipelineConfig(window);
     pipeline_config.polygon_mode = VK_POLYGON_MODE_LINE;
@@ -44,14 +46,15 @@ int main() {
     float mass;
     computeMeshInertia(mesh, 1.0f, inertia, com, &mass);
     glm_vec3_print(com, stdout);
+
     Model model = hostMeshToModel(device, mesh);
     destroyHostMesh(mesh);
     Texture texture = loadTexture(device, &window.device_loop, QUEUE_TYPE_GRAPHICS, "images/cat.png");
     CameraPushConstant push;
     glm_mat4_identity(push.model_matrix);
-    addDescriptorTexture(device, &window.device_loop, SAMPLER_LINEAR, texture);
+    push.texture_id = addDescriptorTexture(device, &window.device_loop, SAMPLER_LINEAR, texture);
     UniformBuffer uniform = createUniformBuffer(device, sizeof(mat4));
-    addDescriptorUniformBuffer(device, &window.device_loop, uniform.buffer.buffer, 0, VK_WHOLE_SIZE);
+    push.uniform_id = addDescriptorUniformBuffer(device, &window.device_loop, uniform.buffer.buffer, 0, VK_WHOLE_SIZE);
 
     while (!glfwWindowShouldClose(window.window)) {
         glfwPollEvents();
@@ -65,6 +68,7 @@ int main() {
         getCameraMatrix(camera, view_matrix);
         updateUniformBuffer(device, uniform, view_matrix, sizeof(view_matrix));
 
+        glm_mat4_identity(push.model_matrix);
         commandPushConstants(currentCommand(window), device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(push), &push);
 
         vkCmdBindPipeline(currentCommand(window), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -77,6 +81,10 @@ int main() {
 
         drawModel(currentCommand(window), model);
 
+        addTextPositioned(&text_font, (vec2){0}, (vec2){0.1f, 0.1f}, COLOR_RED, "deez");
+
+        drawTextFont(currentCommand(window), device, text_renderer, &text_font, windowAspect(window));
+
         endWindowFrame(&window, device, image);
     }
 
@@ -86,8 +94,8 @@ int main() {
     destroyTexture(device, texture);
     destroyModel(device, model);
     vkDestroyPipeline(device.logical, pipeline, NULL);
-    // destroyTextFont(device, text_font);
-    // destroyTextRenderer(device, text_renderer);
+    destroyTextFont(device, text_font);
+    destroyTextRenderer(device, text_renderer);
     destroyWindow(window, device, instance);
     destroyDevice(device, instance);
     vkDestroyInstance(instance, NULL);

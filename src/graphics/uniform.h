@@ -8,7 +8,7 @@
 
 typedef struct UniformBuffer {
     ValidBuffer buffer; // TODO: make a macro to generate structs with multiple buffers per memory
-    void* mapped;
+    void* mapped; // TODO: make sure its fine that this only has one buffer
 } UniformBuffer;
 
 UniformBuffer createUniformBuffer(Device device, VkDeviceSize size);

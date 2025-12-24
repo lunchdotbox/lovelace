@@ -6,10 +6,9 @@
 #include "window.h"
 
 typedef struct CameraPushConstant { // TODO: move this struct somewhere else and rename it cause its not just the camera data
-    // u32 uniform_id;
-    // u32 texture_id;
     mat4 model_matrix;
-    mat4 view;
+    u32 uniform_id;
+    u32 texture_id;
 } CameraPushConstant;
 
 typedef struct Camera {

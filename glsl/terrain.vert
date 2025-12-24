@@ -13,6 +13,6 @@ layout(location = 2) in vec2 in_uv;
 layout(location = 0) out vec2 out_uv;
 
 void main() {
-    gl_Position = ubos[0].view_matrix * push.model_matrix * vec4(in_position, 1.0);
+    gl_Position = ubos[push.uniform_id].view_matrix * push.model_matrix * vec4(in_position, 1.0);
     out_uv = in_uv;
 }

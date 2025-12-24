@@ -1,4 +1,5 @@
 layout(push_constant) uniform Push {
     mat4 model_matrix;
-    mat4 view;
+    uint uniform_id;
+    uint texture_id;
 } push;
