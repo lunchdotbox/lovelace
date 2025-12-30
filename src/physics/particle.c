@@ -1,13 +1,16 @@
 #include "particle.h"
+#include <cglm/mat3.h>
 
 void inertiaTensorWorld(Particle particle, mat3 tensor) {
     if (particle.mass == 0.0f) {
         glm_mat3_identity(tensor);
         return;
     }
-    mat3 orient;
+    mat3 orient, inertia;
     glm_quat_mat3(particle.rotation, orient);
-    glm_mat3_mul(orient, particle.inertia, tensor);
+    glm_mat3_copy(particle.inertia, inertia);
+    glm_mat3_scale(inertia, particle.mass);
+    glm_mat3_mul(orient, inertia, tensor);
     glm_mat3_transpose(orient);
     glm_mat3_mul(tensor, orient, tensor);
 }

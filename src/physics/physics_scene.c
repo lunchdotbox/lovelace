@@ -5,6 +5,7 @@
 #include "particle.h"
 #include "../formats/wavefront.h"
 #include <elc/core.h>
+#include <vulkan/vulkan_core.h>
 
 PhysicsScene createPhysicsScene(u32 max_particles, u32 max_constraints) {
     PhysicsScene scene = {.max_constraints = max_constraints, .max_particles = max_particles};
@@ -20,6 +21,7 @@ void destroyPhysicsScene(PhysicsScene scene) {
 PhysicsRenderer createPhysicsRenderer(u32 max_particles, u32 max_constraints) {
     PhysicsRenderer renderer = {.scene = createPhysicsScene(max_particles, max_constraints)};
     renderer.info = malloc(renderer.scene.max_particles * sizeof(ObjectRenderInfo));
+    for (u32 i = 0; i < max_particles; i++) renderer.info[i] = (ObjectRenderInfo){0};
     return renderer;
 }
 
@@ -61,6 +63,7 @@ void stepPhysicsScene(PhysicsScene scene, float dt, u32 iterations, u32 substeps
 
 void drawPhysicsRenderer(VkCommandBuffer command, Device device, DiffuseRenderer renderer, PhysicsRenderer physics) {
     for (u32 i = 0; i < physics.scene.n_particles; i++) {
+        if (physics.info[i].model.index_buffer == VK_NULL_HANDLE) continue;
         mat4 transform;
         glm_quat_mat4(physics.scene.particles[i].rotation, transform);
         glm_translate(transform, physics.scene.particles[i].position);

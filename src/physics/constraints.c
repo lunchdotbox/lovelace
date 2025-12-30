@@ -46,8 +46,6 @@ void solveConstraint(Constraint c, Particle* body_a, Particle* body_b) {
     float relative_velocity = constraintRelativeVelocity(c, *body_a, *body_b);
     float lambda = -(relative_velocity + c.bias) * c.effective_mass;
 
-    printf("aaa %f %f\n", c.effective_mass, c.bias);
-
     if (body_a->mass != 0.0f) {
         glm_vec3_scale(c.linear_a, lambda, c.linear_a);
         applyLinearImpulse(body_a, c.linear_a);

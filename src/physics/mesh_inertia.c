@@ -3,7 +3,6 @@
 #include <cglm/mat3.h>
 #include <cglm/util.h>
 #include <elc/core.h>
-#include "particle.h"
 
 ELC_INLINE float computeInertiaMoment(vec3s p[3], u32 i) {
     return (p[0].raw[i] * p[0].raw[i]) + (p[1].raw[i] * p[2].raw[i])
@@ -72,10 +71,9 @@ void computeMeshInertia(HostMesh mesh, float density, mat3 inertia, vec3 com, fl
 
     glm_mat3_inv(m_i, inertia);
     glm_vec3_copy(mass_center, com);
-    (*m) = ABS(mass);
-    printf("poo: %f\n", (*m));
+    (*m) = 1.0f / ABS(mass);
 }
 
 void shiftMeshBackwards(HostMesh mesh, vec3 com) {
-    for (u32 i = 0; i < mesh.n_vertices; i++) glm_vec3_sub(mesh.vertices[i].position, com, mesh.vertices[i].position);
+    for (u32 i = 0; i < mesh.n_vertices; i++) glm_vec3_mulsubs(com, 1.0f, mesh.vertices[i].position);
 }

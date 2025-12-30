@@ -21,7 +21,7 @@ void updateCamera(Camera* camera, Window window) {
     camera->rotation[0] -= (mouse_y - camera->last_mouse_y) * 0.002;
     camera->rotation[1] += (mouse_x - camera->last_mouse_x) * 0.002;
 
-    camera->rotation[0] = CLAMP(camera->rotation[0], -((GLM_PI / 2.0) - 0.1), (GLM_PI / 2.0) - 0.1);
+    camera->rotation[0] = CLAMP(camera->rotation[0], -((GLM_PI / 2.0) - 0.01), (GLM_PI / 2.0) - 0.01);
 
     vec3 camera_movement = {};
 
