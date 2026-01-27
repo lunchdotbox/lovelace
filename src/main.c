@@ -1,12 +1,13 @@
-#include "graphics/command.h"
-#include "graphics/descriptor.h"
-#include "formats/wavefront.h"
-#include "graphics/uniform.h"
-#include "physics/constraints.h"
-#include "physics/mesh_inertia.h"
-#include "physics/particle.h"
-#include "physics/physics_scene.h"
-#include "physics/tubular_fluid.h"
+#include "engine/graphics/command.h"
+#include "engine/graphics/descriptor.h"
+#include "engine/formats/wavefront.h"
+#include "engine/graphics/uniform.h"
+#include "engine/physics/constraints.h"
+#include "engine/physics/mesh_inertia.h"
+#include "engine/physics/particle.h"
+#include "engine/physics/physics_scene.h"
+#include "engine/physics/tubular_fluid.h"
+#include "game/cutscenes/intro.h"
 #include <GLFW/glfw3.h>
 #include <cglm/affine-pre.h>
 #include <cglm/affine2d.h>
@@ -20,23 +21,16 @@
 #include <vulkan/vulkan_core.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #define GLM_FORCE_RADIANS 1
-#include "graphics/instance.h"
-#include "graphics/device.h"
-#include "graphics/window.h"
-#include "graphics/model.h"
-#include "graphics/texture.h"
-#include "graphics/camera.h"
-#include "graphics/text.h"
-#include "graphics/simple_draw.h"
+#include "engine/graphics/instance.h"
+#include "engine/graphics/device.h"
+#include "engine/graphics/window.h"
+#include "engine/graphics/model.h"
+#include "engine/graphics/texture.h"
+#include "engine/graphics/camera.h"
+#include "engine/graphics/text.h"
+#include "engine/graphics/simple_draw.h"
 
 int main() {
-    GasSystem gas_a = createGasSystem(10.0f, 100.0f, 10.0f, 10.0f, 10.0f, 1.0f, 0.0f, 5);
-    GasSystem gas_b = createGasSystem(5.0f, 100.0f, 10.0f, 10.0f, 10.0f, 1.0f, 0.0f, 5);
-
-    // for (u32 i = 0; i < 1000; i++) {
-    //     gasSystemFlow(&gas_a, &gas_b, (dvec2){1.0f, 0.0f}, 1.0f, 1.0f, 0.000001, 1.0f);
-    // }
-
     glfwInit();
     VkInstance instance = createInstance();
     Device device = createDevice(instance);
@@ -66,8 +60,15 @@ int main() {
     Particle crankshaft = particle;
     Particle engine_base = {.position = {0.0f, 5.0f, 0.0f}, .mass = 0.0f, .inertia = GLM_MAT3_IDENTITY_INIT, .rotation = GLM_QUAT_IDENTITY_INIT};
 
+    SoundsGame sounds;
+    loadSoundsGame(&sounds, "sounds/");
+
+    IntroCutscene intro = createIntroCutscene();
+
     while (!glfwWindowShouldClose(window.window)) {
         glfwPollEvents();
+
+        u64 ct = milliseconds();
 
         updateCamera(&camera, window);
 
@@ -80,10 +81,6 @@ int main() {
         applyParticleVelocity(&engine_base, 1.0f / 2400.0f);
         applyParticleVelocity(&crankshaft, 1.0f / 2400.0f);
 
-        gasSystemFlow(&gas_a, &gas_b, (dvec2){1.0f, 0.0f}, 1.0f, 1.0f, 0.000001, 1.0f);
-
-        printf("pressure A: %f, pressure B: %f, total energy: %f\n", pressure(gas_a), pressure(gas_b), totalEnergy(gas_a) + totalEnergy(gas_b));
-
         u32 image = beginWindowFrame(&window, device);
         beginWindowPass(window, image, (vec4){0.25f, 0.25f, 0.25f, 0.0f});
 
@@ -95,6 +92,8 @@ int main() {
         glm_quat_rotate(transform, crankshaft.rotation, transform);
         drawTexturedModel(currentCommand(window), renderer, device, model, texture_id, transform);
 
+        tickIntroCutscene(&intro, &text_font, &sounds, ct);
+
         drawTextFont(currentCommand(window), device, text_renderer, &text_font, windowAspect(window));
 
         endWindowFrame(&window, device, image);
@@ -102,6 +101,7 @@ int main() {
 
     vkDeviceWaitIdle(device.logical);
 
+    unloadSoundsGame(&sounds);
     destroyTexture(device, texture);
     destroyModel(device, model);
     destroyDiffuseRenderer(device, renderer);
