@@ -15,10 +15,8 @@
 #include "../graphics/simple_draw.h"
 
 #define INITIAL_ARCHETYPE_MAX_ENTITIES 128
-#define INITIAL_ENTITIES_MAX_ARCHETYPES 32
 #define INITIAL_ENTITIES_MAX_ENTITIES 1024
 #define INITIAL_ENTITIES_BUCKETS 128
-#define ENTITIES_ARCHETYPE_MAP_MAX_SATURATION 75
 #define ENTITIES_MAX_ARCHETYPES_PER_BUCKET 1
 
 typedef struct TransformComponent {
@@ -71,6 +69,7 @@ typedef struct Entities {
 } Entities;
 
 Entities createEntitySystem();
+u32 createEntityUnsorted(Entities* entities, Component* components, u32 n_components, void** data);
 u32 createEntity(Entities* entities, Component* components, u32 n_components, void** data);
 void destroyEntity(Entities* entities, u32 id);
 void addComponent(Entities* entities, u32 id, Component new, const void* data);

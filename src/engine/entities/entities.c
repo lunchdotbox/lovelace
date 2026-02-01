@@ -49,13 +49,14 @@ ELC_INLINE bool hasCorrectComponentsWithNew(const Component *components_a, u32 n
     return true;
 }
 
-ELC_INLINE void sortComponents(Component* components, u32 n_components) {
+ELC_INLINE void sortComponents(Component* components, u32 n_components, void** data) {
     if (n_components == 0) return;
     while (true) {
         bool should_break = true;
         for (u32 i = 0; i < n_components - 1; i++)
             if (components[i] > components[i + 1]) {
                 SWAP(components[i], components[i + 1])
+                if (data != NULL) SWAP(data[i], data[i + 1]);
                 should_break = false;
             }
         if (should_break) break;
@@ -72,6 +73,10 @@ ELC_INLINE u64 hashComponentsWithNew(Component* components, u32 n_components, Co
             has_hashed_new = true;
         }
         hash ^= (u64)(u32)components[i];
+        hash *= ELC_MATH_FNV_PRIME;
+    }
+    if (!has_hashed_new) {
+        hash ^= (u64)(u32)new;
         hash *= ELC_MATH_FNV_PRIME;
     }
     return hash;
@@ -245,7 +250,7 @@ ELC_INLINE u32 addEntityMapping(Entities* entities, EntityMapping mapping) {
     return entities->n_entities - 1;
 }
 
-u32 createEntity(Entities* entities, Component* components, u32 n_components, void** data) {
+u32 createEntityUnsorted(Entities* entities, Component* components, u32 n_components, void** data) {
     void* archetype = findNextArchetype(entities, components, n_components);
 
     EntityListsStart* start = archetype;
@@ -254,7 +259,7 @@ u32 createEntity(Entities* entities, Component* components, u32 n_components, vo
 
     if (start->n_entities + 1 > start->max_entities) allocateArchetypeEntities(archetype, start->max_entities * ELC_MATH_GOLDEN_RATIO);
 
-    for (u32 i = 0; i < n_components; i++) {
+    if (data != NULL) for (u32 i = 0; i < n_components; i++) if (data[i] != NULL) {
         size_t component_size = getComponentSize(component_list[i]);
         memcpy(entity_list[i] + (start->n_entities * component_size), data[i], component_size);
     }
@@ -267,6 +272,11 @@ u32 createEntity(Entities* entities, Component* components, u32 n_components, vo
     };
 
     return addEntityMapping(entities, mapping);
+}
+
+u32 createEntity(Entities* entities, Component* components, u32 n_components, void** data) {
+    sortComponents(components, n_components, data);
+    return createEntityUnsorted(entities, components, n_components, data);
 }
 
 void destroyEntity(Entities* entities, u32 id) {
@@ -292,7 +302,7 @@ void destroyEntity(Entities* entities, u32 id) {
 
     if (id == entities->n_entities - 1) {
         entities->n_entities--;
-        for (u32 i = entities->n_entities - 2; entities->entities[i].archetype_data == NULL && i >= 0; i--) entities->n_entities--;
+        if (entities->n_entities > 0) for (u32 i = entities->n_entities - 1; i >= 0 && entities->entities[i].archetype_data == NULL; i--) entities->n_entities--;
     } else entities->entities[id].archetype_data = NULL;
 
     if (entities->n_entities < entities->max_entities / ELC_MATH_GOLDEN_RATIO) allocateEntityMappings(entities, MAX(entities->max_entities / ELC_MATH_GOLDEN_RATIO, INITIAL_ENTITIES_MAX_ENTITIES));

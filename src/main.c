@@ -1,3 +1,4 @@
+#include "engine/entities/entities.h"
 #include "engine/graphics/command.h"
 #include "engine/graphics/descriptor.h"
 #include "engine/formats/wavefront.h"
@@ -62,6 +63,12 @@ int main() {
 
     SoundsGame sounds;
     loadSoundsGame(&sounds, "sounds/");
+
+    Entities entities = createEntitySystem();
+
+    u32 test_entity = createEntity(&entities, (Component[]){COMPONENT_TRANSFORM}, 1, NULL);
+    // addComponent(&entities, test_entity, COMPONENT_RENDERED, NULL);
+    destroyEntity(&entities, test_entity);
 
     IntroCutscene intro = createIntroCutscene();
 
