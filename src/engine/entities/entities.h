@@ -1,5 +1,5 @@
-#ifndef ENGINE_ENTITIES_H
-#define ENGINE_ENTITIES_H
+#ifndef ENGINE_ENTITIES_ENTITIES_H
+#define ENGINE_ENTITIES_ENTITIES_H
 
 #include <cglm/io.h>
 #include <elc/core.h>
@@ -14,31 +14,8 @@
 #include "../physics/particle.h"
 #include "../graphics/simple_draw.h"
 
-typedef struct TransformComponent {
-    versor rotation;
-    vec3 position;
-} TransformComponent;
-
-#undef _COMPONENTS_MACRO
-#define _COMPONENTS_MACRO\
-    X(TRANSFORM, TransformComponent)\
-    X(PHYSICS, PhysicsComponent)\
-    X(RENDERED, RenderedComponent)
-
-#undef X
-#define X(id, data) COMPONENT_##id,
-typedef enum Component {
-    _COMPONENTS_MACRO
-} Component;
-#undef X
-#define X(id, data) case COMPONENT_##id: return sizeof(data);
-ELC_INLINE size_t getComponentSize(Component component) {
-    switch (component) {
-        _COMPONENTS_MACRO
-    }
-}
-#undef X
-#undef _COMPONENTS_MACRO
+typedef u32 Component;
+typedef u32 Entity;
 
 // each bucket should have a component list where the different archetypes are seperated by section lengths at the start of each section
 // each bucket should have a statically sized list of archetypes
@@ -54,20 +31,33 @@ ELC_INLINE size_t getComponentSize(Component component) {
 
 typedef struct ArchetypeBucket ArchetypeBucket;
 typedef struct EntityMapping EntityMapping;
+typedef struct ComponentInfo ComponentInfo;
+typedef struct ArchetypeCacheBucket ArchetypeCacheBucket;
 
 typedef struct Entities {
+    ComponentInfo* components;
     ArchetypeBucket* buckets;
     EntityMapping* entities;
+    ArchetypeCacheBucket* cache;
     u32 n_entities, max_entities;
-    u32 first_free, last_free;
+    u32 n_components, max_components;
     u32 n_buckets;
+    u32 n_cache;
 } Entities;
 
 Entities createEntitySystem();
-void destroyEntitySystem(Entities entities);
-u32 createEntityUnsorted(Entities* entities, Component* components, u32 n_components, void** data);
-u32 createEntity(Entities* entities, Component* components, u32 n_components, void** data);
-void destroyEntity(Entities* entities, u32 id);
-void addComponent(Entities* entities, u32 id, Component new, const void* data);
+void destroyEntitySystem(Entities* entities);
+Component registerComponent(Entities* entities, size_t size);
+void registerComponentReserved(Entities* entities, Component* reserved, size_t size);
+Component reserveComponents(Entities* entities, u32 count);
+void sortComponents(Component* components, u32 n_components, void** data);
+Entity createEntityUnsorted(Entities* entities, Component* components, u32 n_components, void** data);
+Entity createEntity(Entities* entities, Component* components, u32 n_components, void** data);
+void destroyEntity(Entities* entities, Entity id);
+void addComponent(Entities* entities, Entity id, Component new, const void* data);
+void* findArchetypesUnsorted(Entities* entities, const Component* components, u32 n_components);
+void* findArchetypes(Entities* entities, Component* components, u32 n_components);
+void* getComponentData(void* archetype, Component component);
+u32 getArchetypeEntities(void* archetype);
 
 #endif

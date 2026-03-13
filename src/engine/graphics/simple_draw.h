@@ -2,13 +2,10 @@
 #define ENGINE_GRAPHICS_SIMPLE_DRAW_H
 
 #include "camera.h"
-#include "command.h"
-#include "descriptor.h"
 #include "device.h"
 #include "device_loop.h"
 #include "graphics_pipeline.h"
 #include "model.h"
-#include "texture.h"
 #include "uniform.h"
 #include <cglm/mat4.h>
 #include <vulkan/vulkan_core.h>

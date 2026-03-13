@@ -6,7 +6,6 @@
 #include "engine/physics/constraints.h"
 #include "engine/physics/mesh_inertia.h"
 #include "engine/physics/particle.h"
-#include "engine/physics/physics_scene.h"
 #include "engine/physics/tubular_fluid.h"
 #include "game/cutscenes/intro.h"
 #include <GLFW/glfw3.h>
@@ -65,12 +64,7 @@ int main() {
     loadSoundsGame(&sounds, "sounds/");
 
     Entities entities = createEntitySystem();
-
-    u32 test_entity = createEntity(&entities, (Component[]){COMPONENT_TRANSFORM, COMPONENT_PHYSICS}, 2, (void*[]){&(TransformComponent){0}, &(PhysicsComponent){0}});
-    addComponent(&entities, test_entity, COMPONENT_RENDERED, &(RenderedComponent){.model = NULL});
-    destroyEntity(&entities, test_entity);
-
-    destroyEntitySystem(entities);
+    destroyEntitySystem(&entities);
 
     IntroCutscene intro = createIntroCutscene();
 

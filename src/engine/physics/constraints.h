@@ -2,6 +2,7 @@
 #define ENGINE_PHYSICS_CONSTRAINTS_H
 
 #include "particle.h"
+#include "../entities/entities.h"
 
 typedef struct Constraint {
     vec3 linear_a;
@@ -16,10 +17,10 @@ typedef struct BallJoint {
     Constraint constraints[3];
 } BallJoint;
 
-typedef struct BallJointConstraint {
-    u32 particle_a, particle_b;
+typedef struct ConstraintComponent {
+    Entity entity_a, entity_b;
     vec3 anchor_a, anchor_b;
-} BallJointConstraint;
+} ConstraintComponent;
 
 BallJoint createBallJoint(Particle body_a, Particle body_b, vec3 anchor_a, vec3 anchor_b, float dt);
 void solveConstraint(Constraint c, Particle* body_a, Particle* body_b);
