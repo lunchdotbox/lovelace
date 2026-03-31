@@ -2,6 +2,7 @@
 
 #include "descriptor.h"
 #include "command.h"
+#include "graphics_pipeline.h"
 
 DiffuseRenderer createDiffuseRenderer(Device device, DeviceLoop* loop, PipelineConfig config) {
     DiffuseRenderer renderer;
@@ -16,6 +17,13 @@ DiffuseRenderer createDiffuseRenderer(Device device, DeviceLoop* loop, PipelineC
 void destroyDiffuseRenderer(Device device, DiffuseRenderer renderer) {
     vkDestroyPipeline(device.logical, renderer.pipeline, NULL);
     destroyUniformBuffer(device, renderer.uniform);
+}
+
+void recreateDiffuseRenderer(Device device, DiffuseRenderer* renderer, PipelineConfig config) {
+    vkDestroyPipeline(device.logical, renderer->pipeline, NULL);
+    setPipelineVertexShader(&config, createShaderModule(device, "spv/terrain.vert.spv"));
+    setPipelineFragmentShader(&config, createShaderModule(device, "spv/diffuse.frag.spv"));
+    renderer->pipeline = createPipeline(device, config);
 }
 
 void setRendererCamera(Device device, DiffuseRenderer renderer, Camera camera) {

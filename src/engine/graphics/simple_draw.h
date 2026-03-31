@@ -23,6 +23,7 @@ typedef struct RenderedComponent {
 
 DiffuseRenderer createDiffuseRenderer(Device device, DeviceLoop* loop, PipelineConfig config);
 void destroyDiffuseRenderer(Device device, DiffuseRenderer renderer);
+void recreateDiffuseRenderer(Device device, DiffuseRenderer* renderer, PipelineConfig config);
 void setRendererCamera(Device device, DiffuseRenderer renderer, Camera camera);
 void drawTexturedModel(VkCommandBuffer command, DiffuseRenderer renderer, Device device, Model model, u32 texture_id, mat4 transform);
 

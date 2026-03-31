@@ -3,6 +3,7 @@
 
 #include "device.h"
 #include "window.h"
+#include <vulkan/vulkan_core.h>
 
 typedef struct PipelineConfig {
     VkRenderPass render_pass;

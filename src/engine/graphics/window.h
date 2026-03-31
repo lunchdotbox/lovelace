@@ -19,10 +19,12 @@ typedef struct Window {
     VkSemaphore* render_semaphores;
     DeviceLoop device_loop;
     u32 image_count;
+    bool is_resized;
 } Window;
 
 Window createWindow(Device device, VkInstance instance, int width, int height, const char* title);
 void destroyWindow(Window window, Device device, VkInstance instance);
+void resizeWindow(Window* window, Device device, VkExtent2D new_size);
 u32 acquireNextSwapchainImage(Device device, Window* window);
 void submitAndPresent(Device device, Window* window, VkCommandBuffer command, u32 image_index);
 VkCommandBuffer currentCommand(Window window);
@@ -30,5 +32,6 @@ u32 beginWindowFrame(Window* window, Device device);
 void endWindowFrame(Window* window, Device device, u32 image);
 float windowAspect(Window window);
 void beginWindowPass(Window window, u32 image, vec4 clear);
+bool isWindowResized(Window* window, Device device);
 
 #endif

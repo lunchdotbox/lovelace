@@ -9,8 +9,10 @@
 #include "../utilities/inline.h"
 #include "../utilities/array.h"
 #include "../utilities/vector.h"
+#include <GLFW/glfw3.h>
+#include <vulkan/vulkan_core.h>
 
-INLINE void createSwapchain(Device device, VkExtent2D extent, Window* window) {
+INLINE void createSwapchain(Device device, VkExtent2D extent, Window* window, bool create_render_pass) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physical, window->surface, &capabilities);
 
@@ -89,9 +91,9 @@ INLINE void createSwapchain(Device device, VkExtent2D extent, Window* window) {
     else
         create_info.minImageCount = MIN(capabilities.minImageCount + 1, capabilities.maxImageCount);
 
-    vkCreateSwapchainKHR(device.logical, &create_info, NULL, &window->swapchain);
+    if (create_render_pass) window->render_pass = createRenderPass(device, depth_format, surface_format.format);
 
-    window->render_pass = createRenderPass(device, depth_format, surface_format.format);
+    vkCreateSwapchainKHR(device.logical, &create_info, NULL, &window->swapchain);
 
     // gets the number of images in the swapchain
     vkGetSwapchainImagesKHR(device.logical, window->swapchain, &window->image_count, NULL);
@@ -120,31 +122,41 @@ INLINE void createSwapchain(Device device, VkExtent2D extent, Window* window) {
     if (n_formats != 0) free(formats);
 }
 
-Window createWindow(Device device, VkInstance instance, int width, int height, const char* title) {
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    Window window = {.window = glfwCreateWindow(width, height, title, NULL, NULL)};
-    glfwCreateWindowSurface(instance, window.window, NULL, &window.surface);
-    createSwapchain(device, (VkExtent2D){.width = width, .height = height}, &window);
-    window.device_loop = createDeviceLoop(device, QUEUE_TYPE_GRAPHICS);
-    return window;
-}
-
-void destroyWindow(Window window, Device device, VkInstance instance) {
-    vkDeviceWaitIdle(device.logical);
+INLINE void destroySwapchain(Device device, Window window) {
     for (u32 i = 0; i < window.image_count; i++) {
         vkDestroyFramebuffer(device.logical, window.framebuffers[i], NULL);
         vkDestroyImageView(device.logical, window.color_views[i], NULL);
         vkDestroyImageView(device.logical, window.depth_views[i], NULL);
         vkDestroyImage(device.logical, window.depth_images[i], NULL);
         vkFreeMemory(device.logical, window.depth_memories[i], NULL);
-        vkDestroySemaphore(device.logical, window.render_semaphores[i], NULL);
     }
     free(window.color_images);
+
+    vkDestroySwapchainKHR(device.logical, window.swapchain, NULL);
+}
+
+Window createWindow(Device device, VkInstance instance, int width, int height, const char* title) {
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    Window window = {.window = glfwCreateWindow(width, height, title, NULL, NULL)};
+    glfwCreateWindowSurface(instance, window.window, NULL, &window.surface);
+    createSwapchain(device, (VkExtent2D){.width = width, .height = height}, &window, true);
+    window.device_loop = createDeviceLoop(device, QUEUE_TYPE_GRAPHICS);
+    return window;
+}
+
+void destroyWindow(Window window, Device device, VkInstance instance) {
+    vkDeviceWaitIdle(device.logical);
+    for (u32 i = 0; i < window.image_count; i++) vkDestroySemaphore(device.logical, window.render_semaphores[i], NULL);
+    destroySwapchain(device, window);
     destroyDeviceLoop(window.device_loop, device, QUEUE_TYPE_GRAPHICS);
     vkDestroyRenderPass(device.logical, window.render_pass, NULL);
-    vkDestroySwapchainKHR(device.logical, window.swapchain, NULL);
     vkDestroySurfaceKHR(instance, window.surface, NULL);
     glfwDestroyWindow(window.window);
+}
+
+void resizeWindow(Window* window, Device device, VkExtent2D new_size) {
+    destroySwapchain(device, *window);
+    createSwapchain(device, new_size, window, false);
 }
 
 u32 acquireNextSwapchainImage(Device device, Window* window) {
@@ -198,4 +210,14 @@ float windowAspect(Window window) {
 
 void beginWindowPass(Window window, u32 image, vec4 clear) {
     beginRenderPass(window.render_pass, window.framebuffers[image], window.extent, currentCommand(window), &(VkClearColorValue)VEC4_USE(clear), 1.0f);
+}
+
+bool isWindowResized(Window* window, Device device) {
+    int width, height;
+    glfwGetWindowSize(window->window, &width, &height);
+    if (width != window->extent.width || height != window->extent.height) {
+        resizeWindow(window, device, (VkExtent2D){.width = width, .height = height});
+        return true;
+    }
+    return false;
 }

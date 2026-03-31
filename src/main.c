@@ -13,7 +13,6 @@
 #include <cglm/mat4.h>
 #include <cglm/quat.h>
 #include <cglm/types.h>
-#include <vulkan/vulkan_core.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #define GLM_FORCE_RADIANS 1
 #include "engine/graphics/instance.h"

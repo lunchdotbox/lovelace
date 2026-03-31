@@ -19,6 +19,7 @@
 #define INITIAL_ENTITIES_MAX_COMPONENTS 16
 #define ARCHETYPE_ITERATOR_INITIAL_MAX_STACK 16
 #define INITIAL_COMPONENT_MAX_ARCHETYPES 8
+#define INITIAL_COMPONENT_MAX_CACHE_ENTRIES 8
 #define INITIAL_LOOKUP_CACHE_MAX_ARCHETYPES 8
 #define ENTITIES_MAX_LISTS_PER_CACHE 4
 #define INITIAL_ENTITIES_CACHE_BUCKETS 64
@@ -62,6 +63,7 @@ typedef struct EntryAndHash {
 } EntryAndHash;
 
 typedef struct ArchetypeCacheStart {
+    void** archetypes;
     u32 n_archetypes, max_archetypes;
     u32 n_components;
 } ArchetypeCacheStart;
@@ -114,12 +116,16 @@ void destroyEntitySystem(Entities* entities) {
 
     for (u32 i = 0; i < entities->n_cache; i++) {
         ArchetypeCacheBucket* bucket = &entities->cache[i];
-        for (u32 j = 0; j < bucket->n_entries; i++) {
-
+        for (u32 j = 0; j < bucket->n_entries; j++) {
+            EntryAndHash entry = getCacheEntry(bucket, j);
+            ArchetypeCacheStart* start = entry.entry;
+            free(start->archetypes), free(entry.entry);
         }
+        free(bucket->entries);
     }
 
     for (u32 i = 0; i < entities->n_components; i++) free(entities->components[i].archetypes);
+    for (u32 i = 0; i < entities->n_components; i++) free(entities->components[i].cache_entries);
 
     free(entities->buckets), free(entities->entities), free(entities->components), free(entities->cache);
 }
@@ -130,8 +136,9 @@ INLINE void resizeEntitiesComponents(Entities* entities, u32 max_components) {
 }
 
 INLINE ComponentInfo createComponentInfo(size_t size) {
-    ComponentInfo info = {.size = size, .max_archetypes = INITIAL_COMPONENT_MAX_ARCHETYPES};
-    info.archetypes = malloc(info.n_archetypes * sizeof(void*));
+    ComponentInfo info = {.size = size, .max_archetypes = INITIAL_COMPONENT_MAX_ARCHETYPES, .max_cache_entries = INITIAL_COMPONENT_MAX_CACHE_ENTRIES};
+    info.archetypes = malloc(info.max_archetypes * sizeof(void*));
+    info.cache_entries = malloc(info.max_cache_entries * sizeof(void*));
     return info;
 }
 
@@ -162,8 +169,8 @@ Component reserveComponents(Entities* entities, u32 count) {
     return entities->n_components - count;
 }
 
-INLINE ComponentInfo getComponentInfo(Entities* entities, Component component) {
-    return entities->components[component];
+INLINE ComponentInfo* getComponentInfo(Entities* entities, Component component) {
+    return &entities->components[component];
 }
 
 INLINE bool hasCorrectComponents(const Component* components_a, u32 n_components_a, const Component* components_b, u32 n_components_b) {
@@ -285,14 +292,44 @@ INLINE void resizeArchetypeMap(Entities* entities, u32 n_buckets) {
     entities->n_buckets = n_buckets;
 }
 
+INLINE bool archetypeHasComponent(Component* components, u32 n_components, Component component) { // TODO: make this faster with a binary search
+    for (u32 i = 0; i < n_components; i++) if (components[i] == component) return true;
+    return false;
+}
+
+INLINE bool archetypeHasComponents(Component* components, u32 n_components, Component* required, u32 n_required) { // TODO: make this faster with a binary search
+    for (u32 i = 0; i < n_required; i++) if (!archetypeHasComponent(components, n_components, required[i])) return false;
+    return true;
+}
+
+INLINE void addCacheArchetype(Entities* entities, void* archetype, Component* components, u32 n_components) {
+    for (u32 i = 0; i < n_components; i++) {
+        ComponentInfo* info = &entities->components[components[i]];
+        for (u32 j = 0; j < info->n_cache_entries; j++) {
+            ArchetypeCacheStart* start = info->cache_entries[i];
+            Component* cache_components = info->cache_entries[i] + sizeof(ArchetypeCacheStart);
+
+            if (archetypeHasComponents(components, n_components, cache_components, start->n_components)) {
+                if (start->n_archetypes + 1 > start->max_archetypes) {
+                    start->max_archetypes *= GOLDEN_RATIO;
+                    start->archetypes = realloc(start->archetypes, start->max_archetypes * sizeof(void*));
+                }
+
+                start->archetypes[start->n_archetypes++] = archetype;
+            }
+        }
+    }
+}
+
 INLINE void* createArchetype(Entities* entities, Component* components, u32 n_components, u32 max_entities) {
     void* result = malloc(sizeof(ArchetypeStart) + (n_components * sizeof(Component)) + (n_components * sizeof(void*)));
     void** entity_list = result + sizeof(ArchetypeStart) + (n_components * sizeof(Component));
     *(ArchetypeStart*)result = (ArchetypeStart){.n_components = n_components, .max_entities = max_entities, .entity_ids = malloc(max_entities * sizeof(u32))};
-    for (u32 i = 0; i < n_components; i++) entity_list[i] = malloc(max_entities * getComponentInfo(entities, components[i]).size);
+    for (u32 i = 0; i < n_components; i++) entity_list[i] = malloc(max_entities * getComponentInfo(entities, components[i])->size);
     memcpy(result + sizeof(ArchetypeStart), components, n_components * sizeof(Component));
 
     for (u32 i = 0; i < n_components; i++) addComponentArchetype(&entities->components[components[i]], result);
+    addCacheArchetype(entities, result, components, n_components);
 
     return result;
 }
@@ -302,16 +339,17 @@ INLINE void* createArchetypeWithNew(Entities* entities, Component* components, u
     void** entity_list = result + sizeof(ArchetypeStart) + ((n_components + 1) * sizeof(Component));
     *(ArchetypeStart*)result = (ArchetypeStart){.n_components = n_components + 1, .max_entities = max_entities, .entity_ids = malloc(max_entities * sizeof(u32))};
     for (u32 i = 0; i <= n_components; i++) {
-        if (i >= n_components) entity_list[i] = malloc(max_entities * getComponentInfo(entities, new).size);
+        if (i >= n_components) entity_list[i] = malloc(max_entities * getComponentInfo(entities, new)->size);
         else if (components[i] > new) {
-            entity_list[i] = malloc(max_entities * getComponentInfo(entities, new).size);
-            for (u32 j = 0; j < (n_components - 1) - i; j++) entity_list[i + j + 1] = malloc(max_entities * getComponentInfo(entities, components[i + j]).size);
+            entity_list[i] = malloc(max_entities * getComponentInfo(entities, new)->size);
+            for (u32 j = 0; j < (n_components - 1) - i; j++) entity_list[i + j + 1] = malloc(max_entities * getComponentInfo(entities, components[i + j])->size);
             break;
-        } else entity_list[i] = malloc(max_entities * getComponentInfo(entities, components[i]).size);
+        } else entity_list[i] = malloc(max_entities * getComponentInfo(entities, components[i])->size);
     }
     createNewComponentList(components, n_components, new, result + sizeof(ArchetypeStart));
 
     for (u32 i = 0; i < n_components; i++) addComponentArchetype(&entities->components[components[i]], result);
+    addCacheArchetype(entities, result, components, n_components);
 
     return result;
 }
@@ -359,7 +397,7 @@ INLINE void allocateArchetypeEntities(Entities* entities, void* archetype, u32 m
     void** entity_list = archetype + sizeof(ArchetypeStart) + (start->n_components * sizeof(Component));
     Component* component_list = archetype + sizeof(ArchetypeStart);
     start->max_entities = max_entities;
-    for (u32 i = 0; i < start->n_components; i++) entity_list[i] = realloc(entity_list[i], max_entities * getComponentInfo(entities, component_list[i]).size);
+    for (u32 i = 0; i < start->n_components; i++) entity_list[i] = realloc(entity_list[i], max_entities * getComponentInfo(entities, component_list[i])->size);
     start->entity_ids = realloc(start->entity_ids, start->max_entities * sizeof(u32));
 }
 
@@ -384,7 +422,7 @@ INLINE Entity createEntityInternal(Entities* entities, Component* components, u3
     if (start->n_entities + 1 > start->max_entities) allocateArchetypeEntities(entities, archetype, start->max_entities * GOLDEN_RATIO);
 
     if (data != NULL) for (u32 i = 0; i < n_components; i++) if (data[i] != NULL) {
-        size_t component_size = getComponentInfo(entities, component_list[i]).size;
+        size_t component_size = getComponentInfo(entities, component_list[i])->size;
         memcpy(entity_list[i] + (start->n_entities * component_size), data[i], component_size);
     }
 
@@ -418,7 +456,7 @@ void destroyEntity(Entities* entities, Entity id) {
         EntityMapping* swap = &entities->entities[swap_id];
 
         for (u32 i = 0; i < start->n_components; i++) {
-            size_t component_size = getComponentInfo(entities, component_list[i]).size;
+            size_t component_size = getComponentInfo(entities, component_list[i])->size;
             memcpy(entity_list[i] + (mapping->data_index * component_size), entity_list[i] + (swap->data_index * component_size), component_size);
         }
 
@@ -453,14 +491,14 @@ void addComponent(Entities* entities, Entity id, Component new, const void* data
     for (u32 i = 0, index = 0; i < start->n_components; i++, index++) { // possible bug here
         if (new_components[i] == new) {
             if (data != NULL) {
-                size_t component_size = getComponentInfo(entities, new).size;
+                size_t component_size = getComponentInfo(entities, new)->size;
                 memcpy(new_entity_list[index] + (new_start->n_entities * component_size), data, component_size);
             }
             i--;
             continue;
         }
 
-        size_t component_size = getComponentInfo(entities, components[i]).size;
+        size_t component_size = getComponentInfo(entities, components[i])->size;
         memcpy(new_entity_list[index] + (new_start->n_entities * component_size), entity_list[i] + (mapping->data_index * component_size), component_size);
     }
 
@@ -469,7 +507,7 @@ void addComponent(Entities* entities, Entity id, Component new, const void* data
         EntityMapping* swap = &entities->entities[swap_id];
 
         for (u32 i = 0; i < start->n_components; i++) {
-            size_t component_size = getComponentInfo(entities, components[i]).size;
+            size_t component_size = getComponentInfo(entities, components[i])->size;
             memcpy(entity_list[i] + (mapping->data_index * component_size), entity_list[i] + (swap->data_index * component_size), component_size);
         }
 
@@ -485,26 +523,33 @@ void addComponent(Entities* entities, Entity id, Component new, const void* data
 
 INLINE void* findArchetypesUncachedInternal(Entities* entities, const Component* components, u32 n_components) {
     ArchetypeCacheStart initial_start = {.max_archetypes = INITIAL_COMPONENT_MAX_ARCHETYPES, .n_components = n_components};
-    void* list = malloc(sizeof(ArchetypeCacheStart) + (n_components * sizeof(Component)) + (initial_start.max_archetypes * sizeof(void*)));
+    void* list = malloc(sizeof(ArchetypeCacheStart) + (n_components * sizeof(Component)));
     memcpy(list + sizeof(ArchetypeCacheStart), components, n_components * sizeof(Component));
     ArchetypeCacheStart* start = list;
-    void** archetypes = list + sizeof(ArchetypeCacheStart) + (n_components * sizeof(Component));
+    start->archetypes = malloc(initial_start.max_archetypes * sizeof(void*));
     *start = initial_start;
 
     Component start_component = components[0];
-    ComponentInfo start_info = getComponentInfo(entities, components[0]);
+    ComponentInfo* start_info = getComponentInfo(entities, components[0]);
     for (u32 i = 1; i < n_components; i++) { // possible bug
-        ComponentInfo info = getComponentInfo(entities, components[i]);
-        if (info.n_archetypes < start_info.n_archetypes) {
+        ComponentInfo* info = getComponentInfo(entities, components[i]);
+        if (info->n_archetypes < start_info->n_archetypes) {
             start_component = components[i];
             start_info = info;
         }
+
+        if (info->n_cache_entries + 1 > info->max_cache_entries) {
+            info->max_cache_entries *= GOLDEN_RATIO;
+            info->cache_entries = realloc(info->cache_entries, info->max_cache_entries * sizeof(void*));
+        }
+
+        info->cache_entries[info->n_cache_entries++] = list;
     }
 
-    for (u32 i = 0; i < start_info.n_archetypes; i++) {
+    for (u32 i = 0; i < start_info->n_archetypes; i++) {
         bool should_add = true;
 
-        void* archetype = start_info.archetypes[i];
+        void* archetype = start_info->archetypes[i];
         Component* archetype_components = archetype + sizeof(ArchetypeStart);
 
         for (u32 j = 0; j < n_components; j++) {
@@ -519,12 +564,9 @@ INLINE void* findArchetypesUncachedInternal(Entities* entities, const Component*
                 list = realloc(list, sizeof(ArchetypeCacheStart) + (n_components * sizeof(Component)) + (start->max_archetypes * sizeof(void*)));
             }
 
-            archetypes[start->n_archetypes++] = archetype;
+            start->archetypes[start->n_archetypes++] = archetype;
         }
     }
-
-    start->max_archetypes = start->n_archetypes;
-    list = realloc(list, sizeof(ArchetypeCacheStart) + (n_components * sizeof(Component)) + (start->max_archetypes * sizeof(void*)));
 
     return list;
 }
