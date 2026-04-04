@@ -1,6 +1,7 @@
 #ifndef ENGINE_GRAPHICS_SIMPLE_DRAW_H
 #define ENGINE_GRAPHICS_SIMPLE_DRAW_H
 
+#include "buffer.h"
 #include "camera.h"
 #include "device.h"
 #include "device_loop.h"
@@ -11,7 +12,7 @@
 #include <cglm/mat4.h>
 
 typedef struct DiffuseRenderer {
-    UniformBuffer uniform;
+    UniformBuffer uniform; // TODO: make it use a buffer per frame in flight
     VkPipeline pipeline;
     u32 uniform_id;
 } DiffuseRenderer;
