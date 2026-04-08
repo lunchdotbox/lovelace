@@ -16,5 +16,6 @@ void setDescriptorStorageBuffer(Device device, DeviceLoop* loop, u32 index, VkDe
 u32 addDescriptorStorageBuffer(Device device, DeviceLoop* loop, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
 void setDescriptorUniformBuffer(Device device, DeviceLoop* loop, u32 index, VkDescriptorBufferInfo buffer);
 u32 addDescriptorUniformBuffer(Device device, DeviceLoop* loop, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+void registerStorageBuffer(Device device, DeviceLoop* loop, VkBuffer buffer, VkDeviceSize size, u32* ids);
 
 #endif

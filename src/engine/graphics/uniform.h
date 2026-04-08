@@ -3,6 +3,7 @@
 
 #include "buffer.h"
 #include "device.h"
+#include "device_loop.h"
 
 #include <vulkan/vulkan_core.h>
 
@@ -13,6 +14,7 @@ typedef struct UniformBuffer {
 
 UniformBuffer createUniformBuffer(Device device, VkDeviceSize size);
 void destroyUniformBuffer(Device device, UniformBuffer uniform);
-void updateUniformBuffer(Device device, UniformBuffer uniform, void* data, VkDeviceSize size);
+void updateUniformBuffer(Device device, DeviceLoop loop, UniformBuffer uniform, void* data, VkDeviceSize size);
+void registerUniformBuffer(Device device, DeviceLoop* loop, UniformBuffer uniform, VkDeviceSize size, u32* ids);
 
 #endif

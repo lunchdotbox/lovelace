@@ -143,3 +143,7 @@ u32 addDescriptorUniformBuffer(Device device, DeviceLoop* loop, VkBuffer buffer,
     setDescriptorUniformBuffer(device, loop, loop->set_indices[2], (VkDescriptorBufferInfo){.buffer = buffer, .offset = offset, .range = range});
     return loop->set_indices[2]++;
 }
+
+void registerStorageBuffer(Device device, DeviceLoop* loop, VkBuffer buffer, VkDeviceSize size, u32* ids) {
+    for (u32 i = 0; i < FRAMES_IN_FLIGHT; i++) ids[i] = addDescriptorStorageBuffer(device, loop, buffer, size * i, size);
+}

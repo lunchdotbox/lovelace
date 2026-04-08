@@ -55,9 +55,9 @@ TextFont createTextFont(Device device, DeviceLoop* loop, u64 buffer_size, const 
     font.buffer_size = buffer_size;
     font.texture = loadTexture(device, loop, QUEUE_TYPE_GRAPHICS, atlas_path);
     font.texture_id = addDescriptorTexture(device, loop, SAMPLER_NEAREST, font.texture);
-    font.buffer = createValidBuffer(device, sizeof(TextCharacter) * font.buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    font.buffer_id = addDescriptorStorageBuffer(device, loop, font.buffer.buffer, 0, sizeof(TextCharacter) * font.buffer_size);
-    font.buffer_mapped = mapDeviceMemory(device, font.buffer.memory, 0, font.buffer_size);
+    font.buffer = createValidBuffer(device, sizeof(TextCharacter) * font.buffer_size * FRAMES_IN_FLIGHT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    registerStorageBuffer(device, loop, font.buffer.buffer, sizeof(TextCharacter) * font.buffer_size, font.buffer_ids);
+    font.buffer_mapped = mapDeviceMemory(device, font.buffer.memory, 0, sizeof(TextCharacter) * font.buffer_size * FRAMES_IN_FLIGHT);
     return font;
 }
 
@@ -67,17 +67,17 @@ void destroyTextFont(Device device, TextFont font) {
     destroyTexture(device, font.texture);
 }
 
-void drawTextFont(VkCommandBuffer command, Device device, TextRenderer renderer, TextFont* font, float aspect) {
-    TextPushConstant push = {.texture_id = font->texture_id, .buffer_id = font->buffer_id, .aspect = aspect};
-    flushDeviceMemory(device, font->buffer.memory, 0, VK_WHOLE_SIZE);
-    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.pipeline);
-    vkCmdPushConstants(command, device.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextPushConstant), &push);
-    vkCmdDraw(command, 6, font->n_text, 0, 0);
+void drawTextFont(DeviceLoop loop, Device device, TextRenderer renderer, TextFont* font, float aspect) {
+    TextPushConstant push = {.texture_id = font->texture_id, .buffer_id = font->buffer_ids[loop.frame], .aspect = aspect};
+    flushDeviceMemory(device, font->buffer.memory, sizeof(TextCharacter) * font->buffer_size * loop.frame, sizeof(TextCharacter) * font->buffer_size);
+    vkCmdBindPipeline(loop.commands[loop.frame], VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.pipeline);
+    vkCmdPushConstants(loop.commands[loop.frame], device.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextPushConstant), &push);
+    vkCmdDraw(loop.commands[loop.frame], 6, font->n_text, 0, 0);
     font->n_text = 0;
 }
 
-void addFontCharacters(TextFont* font, TextCharacter* text, u64 n_text) {
-    memcpy(&font->buffer_mapped[font->n_text], text, sizeof(TextCharacter) * n_text);
+void addFontCharacters(TextFont* font, DeviceLoop loop, TextCharacter* text, u64 n_text) {
+    memcpy(&(font->buffer_mapped + (sizeof(TextCharacter) * font->buffer_size * loop.frame))[font->n_text], text, sizeof(TextCharacter) * n_text);
     font->n_text += n_text;
 }
 
@@ -91,11 +91,11 @@ TextCharacter makeTextCharacter(mat3 transform, u32 text, Color color) {
     return character;
 }
 
-void addFontLetter(TextFont* font, mat3 transform, Color color, char letter) {
-    font->buffer_mapped[font->n_text++] = makeTextCharacter(transform, atlas_ascii_map[letter], color);
+void addFontLetter(TextFont* font, DeviceLoop loop, mat3 transform, Color color, char letter) {
+    addFontCharacters(font, loop, (TextCharacter[]){makeTextCharacter(transform, atlas_ascii_map[letter], color)}, 1);
 }
 
-void addFontText(TextFont* font, mat3 trans, Color color, const char* text) {
+void addFontText(TextFont* font, DeviceLoop loop, mat3 trans, Color color, const char* text) {
     vec2 offset = {0};
     for (const char* letter = text; *letter != '\0'; letter++) {
         if (*letter == '\n') {
@@ -106,20 +106,20 @@ void addFontText(TextFont* font, mat3 trans, Color color, const char* text) {
             mat3 transform;
             glm_translate2d_make(transform, offset);
             glm_mat3_mul(trans, transform, transform);
-            addFontLetter(font, transform, color, *letter);
+            addFontLetter(font, loop, transform, color, *letter);
             offset[0] += 7.0f / 13.0f;
         }
     }
 }
 
-void addTextPositioned(TextFont* font, vec2 position, vec2 scale, Color color, const char* text) {
+void addTextPositioned(TextFont* font, DeviceLoop loop, vec2 position, vec2 scale, Color color, const char* text) {
     mat3 transform;
     glm_translate2d_make(transform, position);
     glm_scale2d(transform, scale);
-    addFontText(font, transform, color, text);
+    addFontText(font, loop, transform, color, text);
 }
 
-void addFontIcon(TextFont *font, mat3 trans, Color color, TextIcon icon) {
+void addFontIcon(TextFont *font, DeviceLoop loop, mat3 trans, Color color, TextIcon icon) {
     mat3 transform;
     switch (icon) {
         case TEXT_ICON_FULL:
@@ -134,7 +134,7 @@ void addFontIcon(TextFont *font, mat3 trans, Color color, TextIcon icon) {
             font->buffer_mapped[font->n_text++] = makeTextCharacter(trans, 89, color);
             break;
         case TEXT_ICON_CROSS:
-            addFontLetter(font, trans, color, 'x');
+            addFontLetter(font, loop, trans, color, 'x');
             break;
     }
 }
@@ -154,18 +154,18 @@ void textDimensions(const char* text, vec2 dimensions) {
     dimensions[1] *= 13.0f / 7.0f;
 }
 
-void addTextRectangle(TextFont* font, Color color, vec2 position, vec2 size) {
+void addTextRectangle(TextFont* font, DeviceLoop loop, Color color, vec2 position, vec2 size) {
     mat3 transform;
     glm_translate2d_make(transform, position);
     glm_scale2d(transform, size);
-    addFontIcon(font, transform, color, TEXT_ICON_FULL);
+    addFontIcon(font, loop, transform, color, TEXT_ICON_FULL);
 }
 
-void addTextCentered(TextFont* font, vec2 position, vec2 scale, Color color, const char* text) {
+void addTextCentered(TextFont* font, DeviceLoop loop, vec2 position, vec2 scale, Color color, const char* text) {
     vec2 dimensions, pos;
     textDimensions(text, dimensions);
     glm_vec2_mul(dimensions, scale, dimensions);
     glm_vec2_scale(dimensions, 0.5f, dimensions);
     glm_vec2_sub(position, dimensions, pos);
-    addTextPositioned(font, pos, scale, color, text);
+    addTextPositioned(font, loop, pos, scale, color, text);
 }

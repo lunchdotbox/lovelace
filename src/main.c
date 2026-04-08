@@ -85,16 +85,16 @@ int main() {
         if (beginWindowFrame(&window, device, &image)) {
             beginWindowPass(window, image, (vec4){0.25f, 0.25f, 0.25f, 0.0f});
 
-            setRendererCamera(device, renderer, camera);
+            setRendererCamera(device, window.loop, renderer, camera);
             vkCmdBindPipeline(currentCommand(window), VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.pipeline);
 
             mat4 transform;
             glm_translate_make(transform, crankshaft.position);
             glm_quat_rotate(transform, crankshaft.rotation, transform);
-            drawTexturedModel(currentCommand(window), renderer, device, model, texture_id, transform);
+            drawTexturedModel(window.loop, renderer, device, model, texture_id, transform);
 
             // tickIntroCutscene(&intro, &text_font, &sounds, ct);
-            drawTextFont(currentCommand(window), device, text_renderer, &text_font, windowAspect(window));
+            drawTextFont(window.loop, device, text_renderer, &text_font, windowAspect(window));
 
             endWindowFrame(&window, device, image);
         }
