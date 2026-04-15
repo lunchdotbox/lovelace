@@ -94,6 +94,9 @@ int main() {
             drawTexturedModel(window.loop, renderer, device, model, texture_id, transform);
 
             // tickIntroCutscene(&intro, &text_font, &sounds, ct);
+
+            addTextCentered(&text_font, window.loop, (vec2){0, 0}, (vec2){0.2, 0.2}, COLOR_RED, "im blue");
+
             drawTextFont(window.loop, device, text_renderer, &text_font, windowAspect(window));
 
             endWindowFrame(&window, device, image);
@@ -102,6 +105,7 @@ int main() {
         if (isWindowResized(&window, device)) {
             recreateCamera(&camera, window);
             recreateDiffuseRenderer(device, &renderer, windowPipelineConfig(window));
+            recreateTextRenderer(device, &text_renderer, windowPipelineConfig(window));
         }
     }
 

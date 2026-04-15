@@ -42,6 +42,7 @@ typedef struct TextFont {
 
 TextRenderer createTextRenderer(Device device, PipelineConfig config);
 void destroyTextRenderer(Device device, TextRenderer renderer);
+void recreateTextRenderer(Device device, TextRenderer* renderer, PipelineConfig config);
 TextFont createTextFont(Device device, DeviceLoop* loop, u64 buffer_size, const char* atlas_path);
 void destroyTextFont(Device device, TextFont font);
 void drawTextFont(DeviceLoop loop, Device device, TextRenderer renderer, TextFont* font, float aspect);

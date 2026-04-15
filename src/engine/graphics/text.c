@@ -50,6 +50,11 @@ void destroyTextRenderer(Device device, TextRenderer renderer) {
     vkDestroyPipeline(device.logical, renderer.pipeline, NULL);
 }
 
+void recreateTextRenderer(Device device, TextRenderer* renderer, PipelineConfig config) {
+    destroyTextRenderer(device, *renderer);
+    *renderer = createTextRenderer(device, config);
+}
+
 TextFont createTextFont(Device device, DeviceLoop* loop, u64 buffer_size, const char* atlas_path) {
     TextFont font = {0};
     font.buffer_size = buffer_size;
@@ -77,7 +82,7 @@ void drawTextFont(DeviceLoop loop, Device device, TextRenderer renderer, TextFon
 }
 
 void addFontCharacters(TextFont* font, DeviceLoop loop, TextCharacter* text, u64 n_text) {
-    memcpy(&(font->buffer_mapped + (sizeof(TextCharacter) * font->buffer_size * loop.frame))[font->n_text], text, sizeof(TextCharacter) * n_text);
+    memcpy(&(font->buffer_mapped + (font->buffer_size * loop.frame))[font->n_text], text, sizeof(TextCharacter) * n_text);
     font->n_text += n_text;
 }
 
