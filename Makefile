@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -std=c11 -Iinclude -g
+CFLAGS = -std=c11 -Ilibraries -g
 LDFLAGS = -lglfw -lvulkan -lm -g
 
 # GLSL compiler
@@ -15,10 +15,12 @@ INC_DIR = include
 GLSL_SRC_DIR = glsl
 SPV_DIR = spv
 
+LUAJIT_LIB_FILE = libraries/luajit/src/libluajit.a
+
 # Program name
 TARGET = program
 
-rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
 # Collect all C source files
 SRCS = $(call rwildcard,$(SRC_DIR),*.c)
@@ -37,8 +39,13 @@ SPV_FILES = \
 all: $(TARGET) shaders
 
 # Build C program
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+$(TARGET): $(OBJS) $(LUAJIT_LIB_FILE)
+	$(CC) $(CFLAGS) -o $@ $^ $(LUAJIT_LIB_FILE) $(LDFLAGS)
+
+$(LUAJIT_LIB_FILE):
+	@mkdir libraries
+	git clone https://luajit.org/git/luajit.git libraries/luajit
+	$(MAKE) -C libraries/luajit
 
 # Compile C source to object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
@@ -75,6 +82,9 @@ run: shaders $(TARGET)
 # Clean
 clean:
 	rm -rf $(OBJ_DIR) $(TARGET) $(SPV_DIR)
+
+clean-deps:
+	rm -rf libraries/*
 
 # Phony targets
 .PHONY: all clean run shaders
