@@ -1,7 +1,7 @@
-# Lovelace
+# lovelace
 
-### Lovelace is a hybrid 3D game engine designed for easy + iterative development.
+### lovelace is a hybrid 3D game engine written in C
 
-README will be updated as we define the scope for Lovelace
+the README will be updated as we define the scope for lovelace
 
-**Lovelace is licensed under the [Apache 2.0 license](LICENSE)**
+**lovelace is licensed under the [Apache 2.0 license](LICENSE)**
